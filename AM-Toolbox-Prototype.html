@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AM Toolbox - UI Prototype</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --mica-bg: rgba(243, 243, 243, 0.9);
+            --mica-bg-solid: #f3f3f3;
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --card-bg-hover: rgba(255, 255, 255, 0.95);
+            --text-primary: #1a1a1a;
+            --text-secondary: #5d5d5d;
+            --accent: #0078d4;
+            --accent-hover: #106ebe;
+            --border: rgba(0, 0, 0, 0.08);
+            --border-strong: rgba(0, 0, 0, 0.14);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.18);
+            --divider: rgba(0, 0, 0, 0.06);
+            --success: #107c10;
+        }
+
+        body.dark-theme {
+            --mica-bg: rgba(32, 32, 32, 0.9);
+            --mica-bg-solid: #202020;
+            --card-bg: rgba(50, 50, 50, 0.7);
+            --card-bg-hover: rgba(70, 70, 70, 0.95);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.14);
+            --divider: rgba(255, 255, 255, 0.06);
+        }
+
+        body {
+            font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .fake-window {
+            position: absolute;
+            background: var(--mica-bg-solid);
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+        .fake-window-titlebar {
+            height: 32px;
+            background: var(--mica-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .fake-window-content {
+            padding: 16px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.8;
+        }
+        .fake-window.servicenow { top: 30px; left: 140px; width: 750px; height: 420px; }
+        .fake-window.outlook { top: 80px; right: 140px; width: 650px; height: 380px; }
+
+        .dock {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 52px;
+            background: var(--mica-bg);
+            backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            z-index: 9999;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.25s ease;
+        }
+        .dock.left { left: 10px; }
+        .dock.right { right: 10px; }
+        .dock.auto-hide { opacity: 0; pointer-events: none; }
+        .dock.auto-hide.visible { opacity: 1; pointer-events: auto; }
+
+        .dock-trigger { position: fixed; top: 0; bottom: 0; width: 12px; z-index: 9998; }
+        .dock-trigger.left { left: 0; }
+        .dock-trigger.right { right: 0; }
+
+        .dock-divider { height: 1px; background: var(--divider); margin: 6px 6px; }
+
+        .dock-item {
+            width: 44px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+            color: var(--text-primary);
+            font-size: 17px;
+            user-select: none;
+        }
+        .dock-item:hover { background: var(--card-bg-hover); }
+        .dock-item.active { background: var(--accent); color: white; }
+
+        .dock-item-tooltip {
+            position: absolute;
+            background: var(--mica-bg-solid);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            z-index: 10000;
+        }
+        .dock.left .dock-item-tooltip { left: 54px; }
+        .dock.right .dock-item-tooltip { right: 54px; }
+        .dock-item:hover .dock-item-tooltip { opacity: 1; }
+
+        .flyout-container { position: fixed; top: 50%; transform: translateY(-50%); z-index: 9998; }
+        .flyout-container.left { left: 72px; }
+        .flyout-container.right { right: 72px; }
+
+        .flyout {
+            width: 400px;
+            max-height: 85vh;
+            background: var(--mica-bg);
+            backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: var(--shadow-lg);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .flyout.open { display: flex; animation: flyoutIn 0.2s ease; }
+        @keyframes flyoutIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+        .flyout-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--divider);
+            background: var(--card-bg);
+        }
+        .flyout-title { font-size: 15px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 10px; }
+        .flyout-title-icon { font-size: 18px; }
+        .flyout-actions { display: flex; gap: 2px; }
+        .flyout-btn {
+            width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            border: none; background: transparent; border-radius: 6px;
+            cursor: pointer; color: var(--text-secondary); font-size: 14px;
+            transition: all 0.15s ease;
+        }
+        .flyout-btn:hover { background: var(--card-bg-hover); color: var(--text-primary); }
+        .flyout-content { flex: 1; padding: 18px; overflow-y: auto; }
+        .flyout-footer { padding: 12px 18px; border-top: 1px solid var(--divider); display: flex; justify-content: flex-end; gap: 8px; background: var(--card-bg); }
+
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-input {
+            width: 100%; padding: 10px 12px;
+            border: 1px solid var(--border-strong); border-radius: 6px;
+            font-size: 13px; background: var(--card-bg); color: var(--text-primary);
+            transition: all 0.15s ease;
+        }
+        .form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15); }
+        .form-input::placeholder { color: var(--text-secondary); }
+
+        .btn {
+            padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 500;
+            cursor: pointer; transition: all 0.15s ease;
+            border: 1px solid var(--border-strong); background: var(--card-bg); color: var(--text-primary);
+        }
+        .btn:hover { background: var(--card-bg-hover); }
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+        .results-box {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 14px; font-family: 'Cascadia Code', 'Consolas', monospace;
+            font-size: 11px; line-height: 1.7; max-height: 220px; overflow-y: auto; color: var(--text-primary);
+        }
+        .results-empty { color: var(--text-secondary); font-style: italic; text-align: center; padding: 24px; font-family: 'Segoe UI Variable', sans-serif; font-size: 12px; }
+
+        .settings-section { margin-bottom: 20px; }
+        .settings-section-title { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--divider); }
+        .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+        .setting-info { flex: 1; }
+        .setting-label { font-size: 13px; color: var(--text-primary); }
+        .setting-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+        .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; inset: 0;
+            background: var(--border-strong); border-radius: 12px; transition: all 0.2s ease;
+        }
+        .toggle-slider:before {
+            content: ''; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background: white; border-radius: 50%; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .toggle input:checked + .toggle-slider { background: var(--accent); }
+        .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+        .segmented { display: flex; background: var(--card-bg); border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
+        .segmented-opt {
+            padding: 8px 16px; font-size: 12px; cursor: pointer;
+            transition: all 0.15s ease; color: var(--text-secondary);
+            border-right: 1px solid var(--border); text-align: center; flex: 1;
+        }
+        .segmented-opt:last-child { border-right: none; }
+        .segmented-opt:hover { background: var(--card-bg-hover); }
+        .segmented-opt.active { background: var(--accent); color: white; }
+
+        .clip-item {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 10px 12px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s ease;
+        }
+        .clip-item:hover { background: var(--card-bg-hover); border-color: var(--accent); }
+        .clip-preview { font-size: 12px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .clip-time { font-size: 10px; color: var(--text-secondary); margin-top: 4px; }
+
+        .password-display {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 16px; text-align: center; font-family: 'Cascadia Code', monospace;
+            font-size: 20px; letter-spacing: 2px; color: var(--text-primary); margin-bottom: 14px; user-select: all;
+        }
+
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+        .status-item {
+            background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 8px 10px; display: flex; justify-content: space-between; font-size: 11px;
+        }
+        .status-label { color: var(--text-secondary); }
+        .status-val { font-weight: 600; }
+        .status-val.yes { color: var(--success); }
+        .status-val.no { color: var(--text-secondary); }
+
+        .proto-controls {
+            position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+            background: var(--mica-bg); backdrop-filter: blur(20px);
+            padding: 10px 20px; border-radius: 10px; border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg); display: flex; gap: 20px; align-items: center; z-index: 10000;
+        }
+        .proto-controls label { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+        .proto-controls select, .proto-controls button {
+            padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong);
+            background: var(--card-bg); color: var(--text-primary); font-size: 11px; cursor: pointer;
+        }
+        .proto-controls button:hover { background: var(--card-bg-hover); }
+
+        .toast {
+            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--success); color: white; padding: 10px 20px; border-radius: 8px;
+            font-size: 13px; opacity: 0; transition: all 0.3s ease; z-index: 10001;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+    <div class="fake-window servicenow">
+        <div class="fake-window-titlebar">ServiceNow - Incident Management</div>
+        <div class="fake-window-content">INC0012345 - Password Reset Request<br>INC0012346 - New Hire Access Setup<br>INC0012347 - Change of Status - Transfer</div>
+    </div>
+    <div class="fake-window outlook">
+        <div class="fake-window-titlebar">Outlook - Inbox</div>
+        <div class="fake-window-content">Access Request - John Smith<br>RE: Role Template Question<br>FW: Termination Notice</div>
+    </div>
+
+    <div class="dock-trigger left" id="dockTrigger"></div>
+
+    <div class="dock left" id="dock">
+        <div class="dock-item" data-tool="new-hire" onclick="openTool('new-hire')">✨<span class="dock-item-tooltip">New Hire Note</span></div>
+        <div class="dock-item" data-tool="cos" onclick="openTool('cos')">🔄<span class="dock-item-tooltip">Change of Status</span></div>
+        <div class="dock-item" data-tool="non-employee" onclick="openTool('non-employee')">🏢<span class="dock-item-tooltip">Non-Employee</span></div>
+        <div class="dock-divider"></div>
+        <div class="dock-item" data-tool="user-id" onclick="openTool('user-id')">👤<span class="dock-item-tooltip">User ID Generator</span></div>
+        <div class="dock-item" data-tool="password" onclick="openTool('password')">🔐<span class="dock-item-tooltip">Password Generator</span></div>
+        <div class="dock-item" data-tool="role-lookup" onclick="openTool('role-lookup')">📋<span class="dock-item-tooltip">Role Lookup</span></div>
+        <div class="dock-item" data-tool="ad-search" onclick="openTool('ad-search')">🔎<span class="dock-item-tooltip">AD Group Search</span></div>
+        <div class="dock-item" data-tool="delimit" onclick="openTool('delimit')">🔀<span class="dock-item-tooltip">User Groups / Delimit</span></div>
+        <div class="dock-divider"></div>
+        <div class="dock-item" data-tool="clipboard" onclick="openTool('clipboard')">📎<span class="dock-item-tooltip">Clipboard Manager</span></div>
+        <div class="dock-divider"></div>
+        <div class="dock-item" data-tool="settings" onclick="openTool('settings')">⚙️<span class="dock-item-tooltip">Settings</span></div>
+    </div>
+
+    <div class="flyout-container left" id="flyoutContainer">
+        <div class="flyout" id="flyout-role-lookup">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">📋</span> Role Lookup</div>
+                <div class="flyout-actions">
+                    <button class="flyout-btn" title="Pop out" onclick="showToast('Would open in separate window')">⧉</button>
+                    <button class="flyout-btn" title="Close" onclick="closeTool('role-lookup')">✕</button>
+                </div>
+            </div>
+            <div class="flyout-content">
+                <div class="form-group">
+                    <label class="form-label">Template Number</label>
+                    <input type="text" class="form-input" placeholder="e.g., 5322-10-1560">
+                </div>
+                <div class="results-box"><div class="results-empty">Enter a role number and click Lookup</div></div>
+                <div class="status-grid">
+                    <div class="status-item"><span class="status-label">Epic</span><span class="status-val yes">YES</span></div>
+                    <div class="status-item"><span class="status-label">SER</span><span class="status-val no">NO</span></div>
+                    <div class="status-item"><span class="status-label">HKR</span><span class="status-val no">NO</span></div>
+                    <div class="status-item"><span class="status-label">Imprivata</span><span class="status-val yes">YES</span></div>
+                </div>
+            </div>
+            <div class="flyout-footer">
+                <button class="btn">Copy AD Groups</button>
+                <button class="btn btn-primary">🔍 Lookup</button>
+            </div>
+        </div>
+
+        <div class="flyout" id="flyout-password">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">🔐</span> Password Generator</div>
+                <div class="flyout-actions">
+                    <button class="flyout-btn" title="Pop out">⧉</button>
+                    <button class="flyout-btn" title="Close" onclick="closeTool('password')">✕</button>
+                </div>
+            </div>
+            <div class="flyout-content">
+                <div class="password-display" id="passwordDisplay">Xk7#mP2n</div>
+                <div class="form-group">
+                    <label class="form-label">Length</label>
+                    <input type="number" class="form-input" value="8" min="8" max="16">
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info"><div class="setting-label">Include Special Characters</div></div>
+                    <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+            <div class="flyout-footer">
+                <button class="btn" onclick="generatePassword()">🔄 Generate</button>
+                <button class="btn btn-primary" onclick="showToast('Password copied!')">📋 Copy</button>
+            </div>
+        </div>
+
+        <div class="flyout" id="flyout-clipboard">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">📎</span> Clipboard Manager</div>
+                <div class="flyout-actions">
+                    <button class="flyout-btn" title="Pop out">⧉</button>
+                    <button class="flyout-btn" title="Close" onclick="closeTool('clipboard')">✕</button>
+                </div>
+            </div>
+            <div class="flyout-content">
+                <div class="clip-item" onclick="showToast('Copied to clipboard!')"><div class="clip-preview">jsmith@bronsonhg.org</div><div class="clip-time">2 minutes ago</div></div>
+                <div class="clip-item" onclick="showToast('Copied to clipboard!')"><div class="clip-preview">BHG-APP-Epic-Nurse-Template</div><div class="clip-time">5 minutes ago</div></div>
+                <div class="clip-item" onclick="showToast('Copied to clipboard!')"><div class="clip-preview">Password: Xk7#mP2n (expires in 24h)</div><div class="clip-time">12 minutes ago</div></div>
+                <div class="clip-item" onclick="showToast('Copied to clipboard!')"><div class="clip-preview">5322-10-1560</div><div class="clip-time">18 minutes ago</div></div>
+                <div class="clip-item" onclick="showToast('Copied to clipboard!')"><div class="clip-preview">New Hire Note: John Smith has been provisioned...</div><div class="clip-time">25 minutes ago</div></div>
+            </div>
+            <div class="flyout-footer">
+                <button class="btn">Clear All</button>
+                <button class="btn">Export</button>
+            </div>
+        </div>
+
+        <div class="flyout" id="flyout-settings">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">⚙️</span> Settings</div>
+                <div class="flyout-actions"><button class="flyout-btn" title="Close" onclick="closeTool('settings')">✕</button></div>
+            </div>
+            <div class="flyout-content">
+                <div class="settings-section">
+                    <div class="settings-section-title">Appearance</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><div class="setting-label">Theme</div><div class="setting-desc">Follow Windows system theme</div></div>
+                        <div class="segmented">
+                            <div class="segmented-opt" onclick="setTheme('light', this)">Light</div>
+                            <div class="segmented-opt active" onclick="setTheme('system', this)">System</div>
+                            <div class="segmented-opt" onclick="setTheme('dark', this)">Dark</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-section-title">Dock Position</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><div class="setting-label">Screen Edge</div><div class="setting-desc">Which side of screen to dock</div></div>
+                        <div class="segmented">
+                            <div class="segmented-opt active" onclick="setDockPosition('left', this)">Left</div>
+                            <div class="segmented-opt" onclick="setDockPosition('right', this)">Right</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-section-title">Behavior</div>
+                    <div class="setting-row">
+                        <div class="setting-info"><div class="setting-label">Auto-hide Dock</div><div class="setting-desc">Hide until you mouse to edge</div></div>
+                        <label class="toggle"><input type="checkbox" id="autoHideToggle" onchange="toggleAutoHide(this.checked)"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info"><div class="setting-label">Always on Top</div><div class="setting-desc">Keep dock above other windows</div></div>
+                        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-section-title">User</div>
+                    <div class="form-group">
+                        <label class="form-label">Your Initials</label>
+                        <input type="text" class="form-input" placeholder="e.g., KS" maxlength="3" style="width: 80px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flyout" id="flyout-new-hire">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">✨</span> New Hire Note</div>
+                <div class="flyout-actions">
+                    <button class="flyout-btn" title="Pop out">⧉</button>
+                    <button class="flyout-btn" title="Close" onclick="closeTool('new-hire')">✕</button>
+                </div>
+            </div>
+            <div class="flyout-content">
+                <div class="form-group"><label class="form-label">Employee ID</label><input type="text" class="form-input" placeholder="Enter Employee ID"></div>
+                <div class="form-group"><label class="form-label">Role Number</label><input type="text" class="form-input" placeholder="e.g., 5322-10-1560"></div>
+                <p style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 20px;">Full form would appear here...</p>
+            </div>
+            <div class="flyout-footer"><button class="btn">Clear</button><button class="btn btn-primary">Generate Note</button></div>
+        </div>
+
+        <div class="flyout" id="flyout-cos">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">🔄</span> Change of Status</div>
+                <div class="flyout-actions"><button class="flyout-btn">⧉</button><button class="flyout-btn" onclick="closeTool('cos')">✕</button></div>
+            </div>
+            <div class="flyout-content"><p style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 40px;">COS Note Generator form...</p></div>
+        </div>
+
+        <div class="flyout" id="flyout-non-employee">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">🏢</span> Non-Employee</div>
+                <div class="flyout-actions"><button class="flyout-btn">⧉</button><button class="flyout-btn" onclick="closeTool('non-employee')">✕</button></div>
+            </div>
+            <div class="flyout-content"><p style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 40px;">Non-Employee Note form...</p></div>
+        </div>
+
+        <div class="flyout" id="flyout-user-id">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">👤</span> User ID Generator</div>
+                <div class="flyout-actions"><button class="flyout-btn">⧉</button><button class="flyout-btn" onclick="closeTool('user-id')">✕</button></div>
+            </div>
+            <div class="flyout-content">
+                <div class="form-group"><label class="form-label">First Name</label><input type="text" class="form-input" placeholder="John"></div>
+                <div class="form-group"><label class="form-label">Last Name</label><input type="text" class="form-input" placeholder="Smith"></div>
+                <div class="results-box" style="margin-top: 12px;">
+                    <div style="margin-bottom: 6px;"><strong>jsmith</strong> - ✅ Available</div>
+                    <div style="margin-bottom: 6px;"><strong>jsmith1</strong> - ❌ In Use (John Smith, IT)</div>
+                    <div><strong>johnsmith</strong> - ✅ Available</div>
+                </div>
+            </div>
+            <div class="flyout-footer"><button class="btn btn-primary">Check Availability</button></div>
+        </div>
+
+        <div class="flyout" id="flyout-ad-search">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">🔎</span> AD Group Search</div>
+                <div class="flyout-actions"><button class="flyout-btn">⧉</button><button class="flyout-btn" onclick="closeTool('ad-search')">✕</button></div>
+            </div>
+            <div class="flyout-content">
+                <div class="form-group"><label class="form-label">Search Groups</label><input type="text" class="form-input" placeholder="e.g., Epic, VPN, Citrix..."></div>
+                <div class="results-box"><div class="results-empty">Enter search term to find AD groups</div></div>
+            </div>
+        </div>
+
+        <div class="flyout" id="flyout-delimit">
+            <div class="flyout-header">
+                <div class="flyout-title"><span class="flyout-title-icon">🔀</span> User Groups / Delimit</div>
+                <div class="flyout-actions"><button class="flyout-btn">⧉</button><button class="flyout-btn" onclick="closeTool('delimit')">✕</button></div>
+            </div>
+            <div class="flyout-content">
+                <div class="form-group"><label class="form-label">Username</label><input type="text" class="form-input" placeholder="Enter username"></div>
+                <p style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 20px;">Delimit tool form...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Copied!</div>
+
+    <div class="proto-controls">
+        <label>Position:<select onchange="setDockPositionSelect(this.value)"><option value="left">Left</option><option value="right">Right</option></select></label>
+        <label>Theme:<select onchange="setThemeSelect(this.value)"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+        <label><input type="checkbox" onchange="toggleAutoHide(this.checked)"> Auto-hide</label>
+        <button onclick="closeAllTools()">Close All Flyouts</button>
+    </div>
+
+    <script>
+        const dock = document.getElementById('dock');
+        const flyoutContainer = document.getElementById('flyoutContainer');
+        const dockTrigger = document.getElementById('dockTrigger');
+        let currentTool = null;
+        let autoHideEnabled = false;
+
+        function openTool(toolName) {
+            if (currentTool && currentTool !== toolName) {
+                document.getElementById('flyout-' + currentTool)?.classList.remove('open');
+                document.querySelector(`.dock-item[data-tool="${currentTool}"]`)?.classList.remove('active');
+            }
+            const flyout = document.getElementById('flyout-' + toolName);
+            const dockItem = document.querySelector(`.dock-item[data-tool="${toolName}"]`);
+            if (flyout) {
+                if (currentTool === toolName) {
+                    flyout.classList.remove('open');
+                    dockItem?.classList.remove('active');
+                    currentTool = null;
+                } else {
+                    flyout.classList.add('open');
+                    dockItem?.classList.add('active');
+                    currentTool = toolName;
+                }
+            }
+        }
+
+        function closeTool(toolName) {
+            document.getElementById('flyout-' + toolName)?.classList.remove('open');
+            document.querySelector(`.dock-item[data-tool="${toolName}"]`)?.classList.remove('active');
+            if (currentTool === toolName) currentTool = null;
+        }
+
+        function closeAllTools() {
+            document.querySelectorAll('.flyout').forEach(f => f.classList.remove('open'));
+            document.querySelectorAll('.dock-item').forEach(d => d.classList.remove('active'));
+            currentTool = null;
+        }
+
+        function setDockPosition(position, el) {
+            dock.classList.remove('left', 'right');
+            dock.classList.add(position);
+            flyoutContainer.classList.remove('left', 'right');
+            flyoutContainer.classList.add(position);
+            dockTrigger.classList.remove('left', 'right');
+            dockTrigger.classList.add(position);
+            if (el) {
+                el.parentElement.querySelectorAll('.segmented-opt').forEach(o => o.classList.remove('active'));
+                el.classList.add('active');
+            }
+        }
+
+        function setDockPositionSelect(position) { setDockPosition(position); }
+
+        function setTheme(theme, el) {
+            if (theme === 'dark') document.body.classList.add('dark-theme');
+            else document.body.classList.remove('dark-theme');
+            if (el) {
+                el.parentElement.querySelectorAll('.segmented-opt').forEach(o => o.classList.remove('active'));
+                el.classList.add('active');
+            }
+        }
+
+        function setThemeSelect(theme) { setTheme(theme); }
+
+        function toggleAutoHide(enabled) {
+            autoHideEnabled = enabled;
+            if (enabled) dock.classList.add('auto-hide');
+            else dock.classList.remove('auto-hide');
+        }
+
+        dockTrigger.addEventListener('mouseenter', () => { if (autoHideEnabled) dock.classList.add('visible'); });
+        dock.addEventListener('mouseleave', () => { if (autoHideEnabled) dock.classList.remove('visible'); });
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function generatePassword() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!#$&';
+            let pwd = '';
+            for (let i = 0; i < 8; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+            document.getElementById('passwordDisplay').textContent = pwd;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAllTools();
+            if (!e.ctrlKey && !e.altKey && !e.metaKey) {
+                switch(e.key) {
+                    case '1': openTool('new-hire'); break;
+                    case '2': openTool('cos'); break;
+                    case '3': openTool('non-employee'); break;
+                    case '4': openTool('user-id'); break;
+                    case '5': openTool('password'); break;
+                    case '6': openTool('role-lookup'); break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
